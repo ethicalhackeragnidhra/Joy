@@ -88,7 +88,7 @@ struct ethernet_hdr {
 
 #define ip_hdr_length(ip) ((((ip)->ip_vhl) & 0x0f)*4)
 #define ip_version(ip)    (((ip)->ip_vhl) >> 4)
-#endif
+#endif /* CPU_IS_BIG_ENDIAN */
 
 
 /** IP header structure */
@@ -104,6 +104,58 @@ struct ip_hdr {
     struct in_addr ip_src;    /* source address         */
     struct in_addr ip_dst;    /* destination address    */
 };
+
+/*
+ * ipv6 header format:
+ *
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |Version| Traffic Class |           Flow Label                  |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |         Payload Length        |  Next Header  |   Hop Limit   |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                                                               |
+ *  +                                                               +
+ *  |                                                               |
+ *  +                         Source Address                        +
+ *  |                                                               |
+ *  +                                                               +
+ *  |                                                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                                                               |
+ *  +                                                               +
+ *  |                                                               |
+ *  +                      Destination Address                      +
+ *  |                                                               |
+ *  +                                                               +
+ *  |                                                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+/** IPv6 header structure */
+#if CPU_IS_BIG_ENDIAN 
+struct ipv6_hdr {
+    unsigned int    ip_vrs : 4;  /* version (0110)         */ 
+    unsigned int    ip_tc  : 8;  /* traffic class          */
+    unsigned int    ip_flb : 20; /* flow label             */
+    unsigned short  ip_len;      /* payload length         */
+    unsigned char   ip_nxh;      /* next header            */
+    unsigned char   ip_hop;      /* hop limit              */ 
+    struct in6_addr ip_src;      /* source address         */
+    struct in6_addr ip_dst;      /* destination address    */
+};
+#else  /* little-endian CPU */
+struct ipv6_hdr {
+    unsigned int    ip_flb : 20; /* flow label             */
+    unsigned int    ip_tc  : 8;  /* traffic class          */
+    unsigned int    ip_vrs : 4;  /* version (0110)         */ 
+    unsigned short  ip_len;      /* payload length         */
+    unsigned char   ip_nxh;      /* next header            */
+    unsigned char   ip_hop;      /* hop limit              */ 
+    struct in6_addr ip_src;      /* source address         */
+    struct in6_addr ip_dst;      /* destination address    */
+}; 
+
+#endif  /* CPU_IS_BIG_ENDIAN */
 
 /** Transmission Control Protocol (TCP) header */
 #define TCP_FIN  0x01
