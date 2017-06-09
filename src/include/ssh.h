@@ -55,6 +55,8 @@
 #define ssh_filter(key) ((key->prot == 6) && (key->dp == 22 || key->sp == 22))
 
 #define MAX_SSH_LEN 512
+#define MAX_SSH_PACKET_LEN 35000 /* RFC 4253, Section 6.1. */
+#define MAX_SSH_PAYLOAD_LEN 32768 /* RFC 4253, Section 6.1. */
 
 typedef struct ssh {
     enum role role;
@@ -70,6 +72,16 @@ typedef struct ssh {
     char c_languages[MAX_SSH_LEN];
     char s_languages[MAX_SSH_LEN];
     unsigned char cookie[16];
+    unsigned int c_kex_len;
+    unsigned char c_kex[MAX_SSH_PAYLOAD_LEN];
+    unsigned int s_kex_len;
+    unsigned char s_kex[MAX_SSH_PAYLOAD_LEN];
+    unsigned int s_hostkey_len;
+    unsigned char s_hostkey[MAX_SSH_PAYLOAD_LEN];
+    char s_hostkey_type[MAX_SSH_LEN];
+    unsigned int s_signature_len;
+    unsigned char s_signature[MAX_SSH_PAYLOAD_LEN];
+    char s_signature_type[MAX_SSH_LEN];
 } ssh_t;
 
 declare_feature(ssh);

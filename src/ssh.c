@@ -78,6 +78,8 @@ enum ssh_msg_type {
     SSH_MSG_SERVICE_ACCEPT 	    = 6, 	
     SSH_MSG_KEXINIT 		    = 20, 	
     SSH_MSG_NEWKEYS 		    = 21, 	
+    SSH_MSG_KEXDH_INIT              = 30,
+    SSH_MSG_KEXDH_REPLY             = 31,
     SSH_MSG_USERAUTH_REQUEST 	    = 50, 	
     SSH_MSG_USERAUTH_FAILURE 	    = 51, 	
     SSH_MSG_USERAUTH_SUCCESS 	    = 52, 	
@@ -150,7 +152,7 @@ enum status decode_ssh_string(const void **dataptr, unsigned int *datalen, void 
     const void *data = *dataptr;
     unsigned int length;
 
-    if (*datalen < 4) { 
+    if (*datalen < 4) {
 	fprintf(stderr, "ERROR: wanted %u, only have %u\n", 4, *datalen);
 	return failure;
     }
@@ -170,6 +172,36 @@ enum status decode_ssh_string(const void **dataptr, unsigned int *datalen, void 
     copy_printable_string(dst, dstlen, data, *datalen);    
     data += length;
     *datalen -= length;
+
+    *dataptr = data;
+    return ok;
+}
+
+enum status decode_ssh_bytes(const void **dataptr, unsigned int *datalen, void *dst, unsigned dstlen, unsigned int *decodedlen) { 
+    const void *data = *dataptr;
+    unsigned int length;
+
+    if (*datalen < 4) {
+	fprintf(stderr, "ERROR: wanted %u, only have %u\n", 4, *datalen);
+	return failure;
+    }
+    length = decode_uint32(data);
+    *datalen -= 4;
+    if (length > *datalen) {
+	fprintf(stderr, "ERROR: wanted %u, only have %u\n", length, *datalen);
+	return failure;
+    }
+    data += 4;
+
+    /* robustness check */
+    if (length >= dstlen) {
+      return failure;
+    }
+
+    memcpy(dst, data, length);
+    data += length;
+    *datalen -= length;
+    *decodedlen = length;
 
     *dataptr = data;
     return ok;
@@ -241,6 +273,53 @@ void ssh_parse_kexinit(struct ssh *ssh, const void *data, unsigned int datalen) 
     return;
 }
 
+/*
+ * from RFC 4253, Section 8
+ * decode e 
+ */
+void ssh_parse_kexdh_init(struct ssh *ssh, const void *data, unsigned int datalen) {
+
+    /* copy client key exchange value */
+    if (decode_ssh_bytes(&data, &datalen, ssh->c_kex, sizeof(ssh->c_kex), &ssh->c_kex_len) == failure) {
+    return;
+    }
+
+    return;
+}
+
+void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datalen) {
+    const void *tmpptr;
+    unsigned int tmplen;
+    
+    /* copy server public host key and certificates (K_S) */
+    if (decode_ssh_bytes(&data, &datalen, ssh->s_hostkey, sizeof(ssh->s_hostkey), &ssh->s_hostkey_len) == failure) {
+	return;
+    }
+    /* copy host key type */
+    tmpptr = ssh->s_hostkey;
+    tmplen = ssh->s_hostkey_len;
+    if (decode_ssh_string(&tmpptr, &tmplen, ssh->s_hostkey_type, sizeof(ssh->s_hostkey_type)) == failure) {
+    return;
+    }
+    /* copy server key exchange value */
+    if (decode_ssh_bytes(&data, &datalen, ssh->s_kex, sizeof(ssh->s_kex), &ssh->s_kex_len) == failure) {
+    return;
+    }
+    /* copy signature */
+    if (decode_ssh_bytes(&data, &datalen, ssh->s_signature, sizeof(ssh->s_signature), &ssh->s_signature_len) == failure) {
+	return;
+    }
+    /* copy signature type */
+    tmpptr = ssh->s_signature;
+    tmplen = ssh->s_signature_len;
+    if (decode_ssh_string(&tmpptr, &tmplen, ssh->s_signature_type, sizeof(ssh->s_signature_type)) == failure) {
+    return;
+    }
+
+    return;
+}
+
+
 
 /*
  * start of ssh feature functions
@@ -260,6 +339,12 @@ inline void ssh_init(struct ssh *ssh) {
     memset(ssh->s_comp_algos, 0, sizeof(ssh->s_comp_algos));
     memset(ssh->c_languages, 0, sizeof(ssh->c_languages));
     memset(ssh->s_languages, 0, sizeof(ssh->s_languages));
+    memset(ssh->c_kex, 0, sizeof(ssh->c_kex));
+    memset(ssh->s_kex, 0, sizeof(ssh->s_kex));
+    memset(ssh->s_hostkey, 0, sizeof(ssh->s_hostkey));
+    memset(ssh->s_hostkey_type, 0, sizeof(ssh->s_hostkey_type));
+    memset(ssh->s_signature, 0, sizeof(ssh->s_signature));
+    memset(ssh->s_signature_type, 0, sizeof(ssh->s_signature_type));
 }
 
 void ssh_update(struct ssh *ssh, 
@@ -291,11 +376,29 @@ void ssh_update(struct ssh *ssh,
 
 	    /* robustness check */
 	    if ((ssh->c_encryption_algos[0] != 0) && (ssh->s_encryption_algos[0] != 0)) {
-	      return ;
+	    return;
 	    }
 
 	    ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
 	    break;
+    case SSH_MSG_KEXDH_INIT:
+
+        /* robustness check */
+        if (ssh->c_kex[0] != 0) {
+        return;
+        }
+
+        ssh_parse_kexdh_init(ssh, data + sizeof(struct ssh_packet), length);
+        break;
+    case SSH_MSG_KEXDH_REPLY:
+
+        /* robustness check */
+        if (ssh->s_kex[0] != 0) {
+        return;
+        }
+
+        ssh_parse_kexdh_reply(ssh, data + sizeof(struct ssh_packet), length);
+        break;
 	default:
 	    ; /* noop */
 	}
@@ -324,6 +427,16 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
 	    zprintf(f, ",\"s_comp_algos\":\"%s\"", x1->s_comp_algos);
 	    zprintf(f, ",\"c_languages\":\"%s\"", x1->c_languages);
 	    zprintf(f, ",\"s_languages\":\"%s\"", x1->s_languages);
+        zprintf(f, ",\"s_hostkey_type\":\"%s\"", x1->s_hostkey_type);
+        zprintf(f, ",\"s_hostkey\":");
+        zprintf_raw_as_hex(f, x1->s_hostkey, x1->s_hostkey_len);
+        zprintf(f, ",\"s_signature_type\":\"%s\"", x1->s_signature_type);
+        zprintf(f, ",\"s_signature\":");
+        zprintf_raw_as_hex(f, x1->s_signature, x1->s_signature_len);
+        zprintf(f, ",\"s_kex\":");
+        zprintf_raw_as_hex(f, x1->s_kex, x1->s_kex_len);
+        zprintf(f, ",\"c_kex\":");
+        zprintf_raw_as_hex(f, x1->c_kex, x1->c_kex_len);
 	}
 	zprintf(f, "}");
     }
