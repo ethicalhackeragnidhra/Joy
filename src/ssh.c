@@ -345,6 +345,8 @@ inline void ssh_init(struct ssh *ssh) {
     memset(ssh->s_hostkey_type, 0, sizeof(ssh->s_hostkey_type));
     memset(ssh->s_signature, 0, sizeof(ssh->s_signature));
     memset(ssh->s_signature_type, 0, sizeof(ssh->s_signature_type));
+    ssh->c_newkeys = 0;
+    ssh->s_newkeys = 0;
 }
 
 void ssh_update(struct ssh *ssh, 
@@ -371,38 +373,52 @@ void ssh_update(struct ssh *ssh,
 	if (length == 0) {
 	    return;
 	}
-	switch (msg_code) {
-	case SSH_MSG_KEXINIT:
+        switch (msg_code) {
+        case SSH_MSG_KEXINIT:
 
-	    /* robustness check */
-	    if ((ssh->c_encryption_algos[0] != 0) && (ssh->s_encryption_algos[0] != 0)) {
-	    return;
-	    }
+            /* robustness check */
+            if ((ssh->c_encryption_algos[0] != 0) && (ssh->s_encryption_algos[0] != 0)) {
+                return;
+            }
 
-	    ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
-	    break;
-    case SSH_MSG_KEXDH_INIT:
+            ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
+            break;
+        case SSH_MSG_KEXDH_INIT:
 
-        /* robustness check */
-        if (ssh->c_kex[0] != 0) {
-        return;
+            /* robustness check */
+            if (ssh->c_kex[0] != 0) {
+                return;
+            }
+
+            ssh_parse_kexdh_init(ssh, data + sizeof(struct ssh_packet), length);
+            break;
+        case SSH_MSG_KEXDH_REPLY:
+
+            /* robustness check */
+            if (ssh->s_kex[0] != 0) {
+                return;
+            }
+
+            ssh_parse_kexdh_reply(ssh, data + sizeof(struct ssh_packet), length);
+            break;
+        case SSH_MSG_NEWKEYS:
+
+            /* robustness check */
+            if (ssh->c_newkeys && ssh->s_newkeys) {
+                return;
+            }
+
+            if (ssh->role == role_client) {
+                ssh->c_newkeys = 1;
+            } else {
+                ssh->s_newkeys = 1;
+            }
+            break;
+        default:
+            ; /* noop */
         }
 
-        ssh_parse_kexdh_init(ssh, data + sizeof(struct ssh_packet), length);
-        break;
-    case SSH_MSG_KEXDH_REPLY:
 
-        /* robustness check */
-        if (ssh->s_kex[0] != 0) {
-        return;
-        }
-
-        ssh_parse_kexdh_reply(ssh, data + sizeof(struct ssh_packet), length);
-        break;
-	default:
-	    ; /* noop */
-	}
-    
     }
 
 }
@@ -437,6 +453,8 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         zprintf_raw_as_hex(f, x1->s_kex, x1->s_kex_len);
         zprintf(f, ",\"c_kex\":");
         zprintf_raw_as_hex(f, x1->c_kex, x1->c_kex_len);
+        zprintf(f, ",\"c_newkeys\":\"%s\"", x1->c_newkeys? "true": "false");
+        zprintf(f, ",\"s_newkeys\":\"%s\"", x1->s_newkeys? "true": "false");
 	}
 	zprintf(f, "}");
     }
