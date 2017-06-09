@@ -244,7 +244,7 @@ struct configuration config = { 0, };
 
 /*
  * by default, we use a 10-second flow inactivity timeout window
- * and a 30-second activity timeout; the active_timeout represents
+ * and a 20-second activity timeout; the active_timeout represents
  * the difference between those two times
  */
 #define T_WINDOW 10
@@ -731,7 +731,7 @@ static unsigned int flow_record_is_past_active_expiration (const struct flow_rec
  * \param key
  * \param create_new_records
  * \return pointer to the flow record structure
- * \return NULL if expired or could not create or retireve record
+ * \return NULL if expired or could not create or retrieve record
  */
 struct flow_record *flow_key_get_record (const struct flow_key *key, 
     unsigned int create_new_records) {
