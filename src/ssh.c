@@ -128,7 +128,7 @@ unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned ch
     }
 
     length = ntohl(ssh_packet->packet_length);
-    if (length > 32768) {
+    if (length > MAX_SSH_PAYLOAD_LEN) {
 	return 0;   /* indicate parse error */
     }
     *total_length = length + 4;
@@ -136,7 +136,7 @@ unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned ch
 
     /* robustness check */
     length -= ssh_packet->padding_length - 5;
-    if (length > 32768) {
+    if (length > MAX_SSH_PAYLOAD_LEN) {
       return 0;
     }
 
@@ -166,7 +166,7 @@ enum status decode_ssh_string(const void **dataptr, unsigned int *datalen, void 
     data += 4;
 
     /* robustness check */
-    if (*datalen >= 1024) {
+    if (*datalen >= MAX_SSH_PAYLOAD_LEN) {
       return failure;
     }
 
@@ -415,7 +415,7 @@ void ssh_update(struct ssh *ssh,
 
             /* skip to the next message in buffer */
             len -= total_length;
-            if (len > 32768) {
+            if (len > MAX_SSH_PAYLOAD_LEN) {
                 return;
             }
             data += total_length;
@@ -462,9 +462,12 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         zprintf(f, ",\"c_kex\":");
         zprintf_raw_as_hex(f, cli->c_kex, cli->c_kex_len);
         zprintf(f, ",\"newkeys\":\"%s\"", cli->newkeys? "true": "false");
-        zprintf(f, "},");
+        zprintf(f, "}");
     }
     if (srv != NULL) {
+        if (cli != NULL) {
+            zprintf(f, ",");
+        }
         zprintf(f, "\"srv\":{");
         if (srv->protocol[0] != 0) {
             zprintf(f, "\"protocol\":\"%s\"", srv->protocol);
