@@ -119,7 +119,7 @@ struct ssh_packet {
     unsigned char payload;
 } __attribute__((__packed__));    
 
-unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned char *msg_code) {
+unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned char *msg_code, unsigned int *total_length) {
     const struct ssh_packet *ssh_packet = pkt;
     uint32_t length;
 
@@ -131,6 +131,7 @@ unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned ch
     if (length > 32768) {
 	return 0;   /* indicate parse error */
     }
+    *total_length = length + 4;
     *msg_code = ssh_packet->payload;
 
     /* robustness check */
@@ -284,6 +285,7 @@ void ssh_parse_kexdh_init(struct ssh *ssh, const void *data, unsigned int datale
     return;
     }
 
+    ssh->role = role_client;
     return;
 }
 
@@ -316,6 +318,7 @@ void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datal
     return;
     }
 
+    ssh->role = role_server;
     return;
 }
 
@@ -345,8 +348,7 @@ inline void ssh_init(struct ssh *ssh) {
     memset(ssh->s_hostkey_type, 0, sizeof(ssh->s_hostkey_type));
     memset(ssh->s_signature, 0, sizeof(ssh->s_signature));
     memset(ssh->s_signature_type, 0, sizeof(ssh->s_signature_type));
-    ssh->c_newkeys = 0;
-    ssh->s_newkeys = 0;
+    ssh->newkeys = 0;
 }
 
 void ssh_update(struct ssh *ssh, 
@@ -355,6 +357,7 @@ void ssh_update(struct ssh *ssh,
 		unsigned int len, 
 		unsigned int report_ssh) {
     unsigned int length;
+    unsigned int total_length;
     unsigned char msg_code;
 
     if (len == 0) {
@@ -369,55 +372,54 @@ void ssh_update(struct ssh *ssh,
 		ssh->role = role_client; /* ? */
 	    }
 	}
-	length = ssh_packet_parse(data, len, &msg_code);
-	if (length == 0) {
-	    return;
-	}
-        switch (msg_code) {
-        case SSH_MSG_KEXINIT:
-
-            /* robustness check */
-            if ((ssh->c_encryption_algos[0] != 0) && (ssh->s_encryption_algos[0] != 0)) {
+        while(1) { /* there may be multiple SSH messages in the packet, so parse them all */
+            length = ssh_packet_parse(data, len, &msg_code, &total_length);
+            if (length == 0) {
                 return;
             }
+            switch (msg_code) {
+            case SSH_MSG_KEXINIT:
 
-            ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
-            break;
-        case SSH_MSG_KEXDH_INIT:
+                /* robustness check */
+                if ((ssh->c_encryption_algos[0] != 0) && (ssh->s_encryption_algos[0] != 0)) {
+                    return;
+                }
 
-            /* robustness check */
-            if (ssh->c_kex[0] != 0) {
+                ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
+                break;
+            case SSH_MSG_KEXDH_INIT:
+
+                /* robustness check */
+                if (ssh->c_kex[0] != 0) {
+                    return;
+                }
+
+                ssh_parse_kexdh_init(ssh, data + sizeof(struct ssh_packet), length);
+                break;
+            case SSH_MSG_KEXDH_REPLY:
+
+                /* robustness check */
+                if (ssh->s_kex[0] != 0) {
+                    return;
+                }
+
+                ssh_parse_kexdh_reply(ssh, data + sizeof(struct ssh_packet), length);
+                break;
+            case SSH_MSG_NEWKEYS:
+
+                ssh->newkeys = 1;
+                break;
+            default:
+                ; /* noop */
+            }
+
+            /* skip to the next message in buffer */
+            len -= total_length;
+            if (len > 32768) {
                 return;
             }
-
-            ssh_parse_kexdh_init(ssh, data + sizeof(struct ssh_packet), length);
-            break;
-        case SSH_MSG_KEXDH_REPLY:
-
-            /* robustness check */
-            if (ssh->s_kex[0] != 0) {
-                return;
-            }
-
-            ssh_parse_kexdh_reply(ssh, data + sizeof(struct ssh_packet), length);
-            break;
-        case SSH_MSG_NEWKEYS:
-
-            /* robustness check */
-            if (ssh->c_newkeys && ssh->s_newkeys) {
-                return;
-            }
-
-            if (ssh->role == role_client) {
-                ssh->c_newkeys = 1;
-            } else {
-                ssh->s_newkeys = 1;
-            }
-            break;
-        default:
-            ; /* noop */
+            data += total_length;
         }
-
 
     }
 
@@ -425,40 +427,74 @@ void ssh_update(struct ssh *ssh,
 
 void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
 
-    if (x1->role != role_unknown) {
-	zprintf(f, ",\"ssh\":{");
-	if (x1->protocol[0] != 0) {
-	    zprintf(f, "\"protocol\":\"%s\"", x1->protocol);
-	    if (x1->cookie[0] != 0) {
-		zprintf(f, ",\"cookie\":");
-		zprintf_raw_as_hex(f, x1->cookie, sizeof(x1->cookie));
-	    }
-	    zprintf(f, ",\"kex_algos\":\"%s\"", x1->kex_algos);
-	    zprintf(f, ",\"s_host_key_algos\":\"%s\"", x1->s_host_key_algos);
-	    zprintf(f, ",\"c_encryption_algos\":\"%s\"", x1->c_encryption_algos);
-	    zprintf(f, ",\"s_encryption_algos\":\"%s\"", x1->s_encryption_algos);
-	    zprintf(f, ",\"c_mac_algos\":\"%s\"", x1->c_mac_algos);
-	    zprintf(f, ",\"s_mac_algos\":\"%s\"", x1->s_mac_algos);
-	    zprintf(f, ",\"c_comp_algos\":\"%s\"", x1->c_comp_algos);
-	    zprintf(f, ",\"s_comp_algos\":\"%s\"", x1->s_comp_algos);
-	    zprintf(f, ",\"c_languages\":\"%s\"", x1->c_languages);
-	    zprintf(f, ",\"s_languages\":\"%s\"", x1->s_languages);
-        zprintf(f, ",\"s_hostkey_type\":\"%s\"", x1->s_hostkey_type);
-        zprintf(f, ",\"s_hostkey\":");
-        zprintf_raw_as_hex(f, x1->s_hostkey, x1->s_hostkey_len);
-        zprintf(f, ",\"s_signature_type\":\"%s\"", x1->s_signature_type);
-        zprintf(f, ",\"s_signature\":");
-        zprintf_raw_as_hex(f, x1->s_signature, x1->s_signature_len);
-        zprintf(f, ",\"s_kex\":");
-        zprintf_raw_as_hex(f, x1->s_kex, x1->s_kex_len);
-        zprintf(f, ",\"c_kex\":");
-        zprintf_raw_as_hex(f, x1->c_kex, x1->c_kex_len);
-        zprintf(f, ",\"c_newkeys\":\"%s\"", x1->c_newkeys? "true": "false");
-        zprintf(f, ",\"s_newkeys\":\"%s\"", x1->s_newkeys? "true": "false");
-	}
-	zprintf(f, "}");
+    const struct ssh *cli = NULL, *srv = NULL;
+    if (x1->role == role_unknown) {
+        return;
     }
-  
+    if (x1->role == role_client) {
+        cli = x1;
+        if (x2 != NULL && x2->role == role_server) {
+            srv = x2;
+        }
+    } else { // x1->role == role_server
+        srv = x1;
+    }
+    zprintf(f, ",\"ssh\":{");
+    if (cli != NULL) {
+        zprintf(f, "\"cli\":{");
+        if (cli->protocol[0] != 0) {
+            zprintf(f, "\"protocol\":\"%s\"", cli->protocol);
+        }
+        if (cli->cookie[0] != 0) {
+            zprintf(f, ",\"cookie\":");
+            zprintf_raw_as_hex(f, cli->cookie, sizeof(cli->cookie));
+        }
+        zprintf(f, ",\"kex_algos\":\"%s\"", cli->kex_algos);
+        zprintf(f, ",\"s_host_key_algos\":\"%s\"", cli->s_host_key_algos);
+        zprintf(f, ",\"c_encryption_algos\":\"%s\"", cli->c_encryption_algos);
+        zprintf(f, ",\"s_encryption_algos\":\"%s\"", cli->s_encryption_algos);
+        zprintf(f, ",\"c_mac_algos\":\"%s\"", cli->c_mac_algos);
+        zprintf(f, ",\"s_mac_algos\":\"%s\"", cli->s_mac_algos);
+        zprintf(f, ",\"c_comp_algos\":\"%s\"", cli->c_comp_algos);
+        zprintf(f, ",\"s_comp_algos\":\"%s\"", cli->s_comp_algos);
+        zprintf(f, ",\"c_languages\":\"%s\"", cli->c_languages);
+        zprintf(f, ",\"s_languages\":\"%s\"", cli->s_languages);
+        zprintf(f, ",\"c_kex\":");
+        zprintf_raw_as_hex(f, cli->c_kex, cli->c_kex_len);
+        zprintf(f, ",\"newkeys\":\"%s\"", cli->newkeys? "true": "false");
+        zprintf(f, "},");
+    }
+    if (srv != NULL) {
+        zprintf(f, "\"srv\":{");
+        if (srv->protocol[0] != 0) {
+            zprintf(f, "\"protocol\":\"%s\"", srv->protocol);
+        }
+        if (srv->cookie[0] != 0) {
+            zprintf(f, ",\"cookie\":");
+            zprintf_raw_as_hex(f, srv->cookie, sizeof(srv->cookie));
+        }
+        zprintf(f, ",\"kex_algos\":\"%s\"", srv->kex_algos);
+        zprintf(f, ",\"s_host_key_algos\":\"%s\"", srv->s_host_key_algos);
+        zprintf(f, ",\"c_encryption_algos\":\"%s\"", srv->c_encryption_algos);
+        zprintf(f, ",\"s_encryption_algos\":\"%s\"", srv->s_encryption_algos);
+        zprintf(f, ",\"c_mac_algos\":\"%s\"", srv->c_mac_algos);
+        zprintf(f, ",\"s_mac_algos\":\"%s\"", srv->s_mac_algos);
+        zprintf(f, ",\"c_comp_algos\":\"%s\"", srv->c_comp_algos);
+        zprintf(f, ",\"s_comp_algos\":\"%s\"", srv->s_comp_algos);
+        zprintf(f, ",\"c_languages\":\"%s\"", srv->c_languages);
+        zprintf(f, ",\"s_languages\":\"%s\"", srv->s_languages);
+        zprintf(f, ",\"s_hostkey_type\":\"%s\"", srv->s_hostkey_type);
+        zprintf(f, ",\"s_hostkey\":");
+        zprintf_raw_as_hex(f, srv->s_hostkey, srv->s_hostkey_len);
+        zprintf(f, ",\"s_signature_type\":\"%s\"", srv->s_signature_type);
+        zprintf(f, ",\"s_signature\":");
+        zprintf_raw_as_hex(f, srv->s_signature, srv->s_signature_len);
+        zprintf(f, ",\"s_kex\":");
+        zprintf_raw_as_hex(f, srv->s_kex, srv->s_kex_len);
+        zprintf(f, ",\"newkeys\":\"%s\"", srv->newkeys? "true": "false");
+        zprintf(f, "}");
+    }
+    zprintf(f, "}");
 }
 
 void ssh_delete(struct ssh *ssh) { 

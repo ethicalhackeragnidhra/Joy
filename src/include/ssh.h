@@ -82,7 +82,7 @@ typedef struct ssh {
     unsigned int s_signature_len;
     unsigned char s_signature[MAX_SSH_PAYLOAD_LEN];
     char s_signature_type[MAX_SSH_LEN];
-    int c_newkeys, s_newkeys;
+    int newkeys;
 } ssh_t;
 
 declare_feature(ssh);
