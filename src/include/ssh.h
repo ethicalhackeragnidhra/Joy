@@ -58,9 +58,16 @@
 #define MAX_SSH_PACKET_LEN 35000 /* RFC 4253, Section 6.1. */
 #define MAX_SSH_PAYLOAD_LEN 32768 /* RFC 4253, Section 6.1. */
 
+struct ssh_msg {
+    unsigned char msg_code;
+    uint32_t length;
+    unsigned char data[MAX_SSH_PAYLOAD_LEN];
+};
+
 typedef struct ssh {
     enum role role;
     char protocol[MAX_SSH_LEN];
+    char kex_algo[MAX_SSH_LEN];
     char kex_algos[MAX_SSH_LEN];
     char s_host_key_algos[MAX_SSH_LEN];
     char c_encryption_algos[MAX_SSH_LEN];
@@ -72,6 +79,13 @@ typedef struct ssh {
     char c_languages[MAX_SSH_LEN];
     char s_languages[MAX_SSH_LEN];
     unsigned char cookie[16];
+    struct ssh_msg *kex_msgs;
+    unsigned int kex_msgs_len;
+    unsigned int c_gex_min,c_gex_n,c_gex_max;
+    unsigned int s_gex_p_len;
+    unsigned char s_gex_p[MAX_SSH_PAYLOAD_LEN];
+    unsigned int s_gex_g_len;
+    unsigned char s_gex_g[MAX_SSH_PAYLOAD_LEN];
     unsigned int c_kex_len;
     unsigned char c_kex[MAX_SSH_PAYLOAD_LEN];
     unsigned int s_kex_len;
