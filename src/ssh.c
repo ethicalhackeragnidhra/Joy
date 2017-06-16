@@ -282,15 +282,15 @@ void ssh_get_kex_algo(struct ssh *cli, struct ssh *srv) {
     if (cli == NULL || srv == NULL || cli->kex_algos[0] == 0 || srv->kex_algos[0] == 0) {
         return;
     }
-    strncpy(copy, cli->kex_algos, MAX_SSH_LEN);
+    strncpy(copy, cli->kex_algos, MAX_SSH_LEN-1);
 
     for(algo = strtok(copy, sep); algo; algo = strtok(NULL, sep)) {
         if (strstr(srv->kex_algos, algo) != NULL) {
             break;
         }
     }
-    strncpy(cli->kex_algo, algo, MAX_SSH_LEN);
-    strncpy(srv->kex_algo, algo, MAX_SSH_LEN);
+    strncpy(cli->kex_algo, algo, MAX_SSH_LEN-1);
+    strncpy(srv->kex_algo, algo, MAX_SSH_LEN-1);
     return;
 }
 
@@ -484,7 +484,12 @@ void ssh_dh_kex(struct ssh *cli, struct ssh *srv) {
 #define SSH_MSG_KEXGSS_ERROR                      34
 #define SSH_MSG_KEXGSS_GROUPREQ                   40
 #define SSH_MSG_KEXGSS_GROUP                      41
-void ssh_gss_kex(struct ssh *cli, struct ssh *srv) {
+void ssh_gss_dh_kex(struct ssh *cli, struct ssh *srv) {
+    /* TODO */
+    return;
+}
+
+void ssh_gss_gex_kex(struct ssh *cli, struct ssh *srv) {
     /* TODO */
     return;
 }
@@ -533,10 +538,10 @@ void ssh_process(struct ssh *cli, struct ssh *srv) {
             || strstr(cli->kex_algo, "curve25519-sha256@libssh.org")) {
         ssh_dh_kex(cli, srv);
     } else if (strstr(cli->kex_algo, "gss-group1-sha1-")
-            || strstr(cli->kex_algo, "gss-group14-sha1-")
-            || strstr(cli->kex_algo, "gss-gex-sha1-")
-            || strstr(cli->kex_algo, "gss-")) {
-        ssh_gss_kex(cli, srv);
+            || strstr(cli->kex_algo, "gss-group14-sha1-")) {
+        ssh_gss_dh_kex(cli, srv);
+    } else if (strstr(cli->kex_algo, "gss-gex-sha1-")) {
+        ssh_gss_gex_kex(cli, srv);
     } else if (strstr(cli->kex_algo, "rsa1024-sha1")
             || strstr(cli->kex_algo, "rsa2048-sha256")) {
         ssh_rsa_kex(cli, srv);
@@ -564,12 +569,26 @@ inline void ssh_init(struct ssh *ssh) {
     memset(ssh->s_comp_algos, 0, sizeof(ssh->s_comp_algos));
     memset(ssh->c_languages, 0, sizeof(ssh->c_languages));
     memset(ssh->s_languages, 0, sizeof(ssh->s_languages));
+    memset(ssh->kex_algo, 0, sizeof(ssh->kex_algo));
+    ssh->c_kex_len = 0;
     memset(ssh->c_kex, 0, sizeof(ssh->c_kex));
+    ssh->s_kex_len = 0;
     memset(ssh->s_kex, 0, sizeof(ssh->s_kex));
+    ssh->s_hostkey_len = 0;
     memset(ssh->s_hostkey, 0, sizeof(ssh->s_hostkey));
     memset(ssh->s_hostkey_type, 0, sizeof(ssh->s_hostkey_type));
+    ssh->s_signature_len = 0;
     memset(ssh->s_signature, 0, sizeof(ssh->s_signature));
     memset(ssh->s_signature_type, 0, sizeof(ssh->s_signature_type));
+    ssh->s_gex_p_len = 0;
+    memset(ssh->s_gex_p, 0, sizeof(ssh->s_gex_p));
+    ssh->s_gex_g_len = 0;
+    memset(ssh->s_gex_g, 0, sizeof(ssh->s_gex_g));
+    ssh->kex_msgs = NULL;
+    ssh->kex_msgs_len = 0;
+    ssh->c_gex_min = 0;
+    ssh->c_gex_n = 0;
+    ssh->c_gex_max = 0;
     ssh->newkeys = 0;
 }
 
@@ -629,9 +648,10 @@ void ssh_update(struct ssh *ssh,
                 /* key exchange specific messages */
                 if (msg_code >= 30 && msg_code <= 49) {
                     if (ssh->kex_msgs == NULL) {
-                        ssh->kex_msgs = malloc(sizeof(struct ssh_msg));
+                        ssh->kex_msgs = calloc(1, sizeof(struct ssh_msg));
                     } else {
                         ssh->kex_msgs = realloc(ssh->kex_msgs, (ssh->kex_msgs_len + 1) * sizeof(struct ssh_msg));
+                        memset(ssh->kex_msgs + (ssh->kex_msgs_len)*sizeof(struct ssh_msg), 0, sizeof(struct ssh_msg));
                     }
                     ssh->kex_msgs[ssh->kex_msgs_len].msg_code = msg_code;
                     ssh->kex_msgs[ssh->kex_msgs_len].length = length;
@@ -748,8 +768,10 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
     zprintf(f, "}");
 }
 
-void ssh_delete(struct ssh *ssh) { 
-    free(ssh->kex_msgs);
+void ssh_delete(struct ssh *ssh) {
+    if (ssh->kex_msgs != NULL) {
+	free(ssh->kex_msgs);
+    }
 }
 
 void ssh_unit_test() {
