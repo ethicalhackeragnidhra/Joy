@@ -43,6 +43,7 @@
 #define P2FUTILS
 
 #include <stdio.h>
+#include <ctype.h>      /* for isprint()           */
 #include <pcap.h>
 #include "parson.h"
 
@@ -72,5 +73,16 @@ enum role {
   role_client  = 1,
   role_server  = 2
 };
+
+struct vector {
+    unsigned int len;
+    unsigned char *bytes;
+};
+
+void copy_printable_string(char *buf, unsigned buflen, const void *data, unsigned datalen);
+void vector_init(struct vector *vector);
+void vector_set(struct vector *vector, const void *data, unsigned len);
+char *vector_string(struct vector *vector);
+void vector_free(struct vector *vector);
 
 #endif /* P2FUTILS */

@@ -54,48 +54,42 @@
 
 #define ssh_filter(key) ((key->prot == 6) && (key->dp == 22 || key->sp == 22))
 
-#define MAX_SSH_LEN 512
+#define MAX_SSH_STRING_LEN 512
+#define MAX_SSH_KEX_MESSAGES 2 /* large enough for DH, RSA, and GEX key exchanges */
 #define MAX_SSH_PACKET_LEN 35000 /* RFC 4253, Section 6.1. */
 #define MAX_SSH_PAYLOAD_LEN 32768 /* RFC 4253, Section 6.1. */
 
 struct ssh_msg {
     unsigned char msg_code;
-    uint32_t length;
-    unsigned char data[MAX_SSH_PAYLOAD_LEN];
+    struct vector *data;
 };
 
 typedef struct ssh {
     enum role role;
-    char protocol[MAX_SSH_LEN];
-    char kex_algo[MAX_SSH_LEN];
-    char kex_algos[MAX_SSH_LEN];
-    char s_host_key_algos[MAX_SSH_LEN];
-    char c_encryption_algos[MAX_SSH_LEN];
-    char s_encryption_algos[MAX_SSH_LEN];
-    char c_mac_algos[MAX_SSH_LEN];
-    char s_mac_algos[MAX_SSH_LEN];
-    char c_comp_algos[MAX_SSH_LEN];
-    char s_comp_algos[MAX_SSH_LEN];
-    char c_languages[MAX_SSH_LEN];
-    char s_languages[MAX_SSH_LEN];
+    char protocol[MAX_SSH_STRING_LEN];
     unsigned char cookie[16];
-    struct ssh_msg *kex_msgs;
-    unsigned int kex_msgs_len;
+    char *kex_algo;
+    struct vector *kex_algos;
+    struct vector *s_host_key_algos;
+    struct vector *c_encryption_algos;
+    struct vector *s_encryption_algos;
+    struct vector *c_mac_algos;
+    struct vector *s_mac_algos;
+    struct vector *c_comp_algos;
+    struct vector *s_comp_algos;
+    struct vector *c_languages;
+    struct vector *s_languages;
+    struct vector *s_gex_p;
+    struct vector *s_gex_g;
+    struct vector *c_kex;
+    struct vector *s_kex;
+    struct vector *s_hostkey;
+    struct vector *s_signature;
+    struct vector *s_hostkey_type;
+    struct vector *s_signature_type;
+    unsigned kex_msgs_len;
+    struct ssh_msg kex_msgs[MAX_SSH_KEX_MESSAGES];
     unsigned int c_gex_min,c_gex_n,c_gex_max;
-    unsigned int s_gex_p_len;
-    unsigned char s_gex_p[MAX_SSH_PAYLOAD_LEN];
-    unsigned int s_gex_g_len;
-    unsigned char s_gex_g[MAX_SSH_PAYLOAD_LEN];
-    unsigned int c_kex_len;
-    unsigned char c_kex[MAX_SSH_PAYLOAD_LEN];
-    unsigned int s_kex_len;
-    unsigned char s_kex[MAX_SSH_PAYLOAD_LEN];
-    unsigned int s_hostkey_len;
-    unsigned char s_hostkey[MAX_SSH_PAYLOAD_LEN];
-    char s_hostkey_type[MAX_SSH_LEN];
-    unsigned int s_signature_len;
-    unsigned char s_signature[MAX_SSH_PAYLOAD_LEN];
-    char s_signature_type[MAX_SSH_LEN];
     int newkeys;
 } ssh_t;
 

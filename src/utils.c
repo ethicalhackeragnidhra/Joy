@@ -204,3 +204,68 @@ JSON_Value* joy_utils_open_resource_parson(const char *filename) {
     return value;
 }
 
+void copy_printable_string(char *buf, 
+			   unsigned int buflen, 
+			   const void *data,
+			   unsigned int datalen) {
+    const char *d = data;
+
+    while (buflen-- && datalen--) {
+	if (!isprint(*d)) {
+	    break;
+	}
+	*buf++ = *d++;
+    }
+
+    *buf = 0; /* null terminate buffer */
+}
+
+void vector_init(struct vector *vector) {
+
+    vector->len = 0;
+    vector->bytes = NULL;
+
+    return;
+}
+
+void vector_set(struct vector *vector, const void *data, unsigned len) {
+
+    if (vector->len != 0 || vector->bytes != NULL) {
+        return;
+    }
+    vector->bytes = malloc(len);
+    if (vector->bytes == NULL) {
+        return;
+    }
+    vector->len = len;
+    memcpy(vector->bytes, data, len);
+    
+    return;
+}
+
+char *vector_string(struct vector *vector) {
+    char *s;
+
+    s = malloc(vector->len+1);
+    if (s == NULL) {
+        return NULL;
+    }
+    if (vector->len > 0) {
+        copy_printable_string(s, vector->len+1, vector->bytes, vector->len);
+    } else {
+        s[0] = 0;
+    }
+
+    return s;
+}
+
+void vector_free(struct vector *vector) {
+
+    if (vector->bytes != NULL) {
+        free(vector->bytes);
+        vector->bytes = NULL;
+    }
+    vector->len = 0;
+
+    return;
+}
