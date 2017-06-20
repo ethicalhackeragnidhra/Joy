@@ -639,9 +639,7 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
     zprintf(f, ",\"ssh\":{");
     if (cli != NULL) {
         zprintf(f, "\"cli\":{");
-        if (cli->protocol[0] != 0) {
-            zprintf(f, "\"protocol\":\"%s\"", cli->protocol);
-        }
+        zprintf(f, "\"protocol\":\"%s\"", cli->protocol);
         if (cli->cookie[0] != 0) {
             zprintf(f, ",\"cookie\":");
             zprintf_raw_as_hex(f, cli->cookie, sizeof(cli->cookie));
@@ -671,9 +669,7 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
             zprintf(f, ",");
         }
         zprintf(f, "\"srv\":{");
-        if (srv->protocol[0] != 0) {
-            zprintf(f, "\"protocol\":\"%s\"", srv->protocol);
-        }
+        zprintf(f, "\"protocol\":\"%s\"", srv->protocol);
         if (srv->cookie[0] != 0) {
             zprintf(f, ",\"cookie\":");
             zprintf_raw_as_hex(f, srv->cookie, sizeof(srv->cookie));
