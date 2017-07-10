@@ -1,5 +1,5 @@
 /*
- *	
+ *    
  * Copyright (c) 2016 Cisco Systems, Inc.
  * All rights reserved.
  * 
@@ -54,35 +54,35 @@
  * from http://www.iana.org/assignments/ssh-parameters/ssh-parameters.xhtml
  */
 enum ssh_msg_type {
-    SSH_MSG_DISCONNECT 	            = 1, 	
-    SSH_MSG_IGNORE 		    = 2, 	
-    SSH_MSG_UNIMPLEMENTED 	    = 3, 	
-    SSH_MSG_DEBUG 		    = 4, 	
-    SSH_MSG_SERVICE_REQUEST 	    = 5, 	
-    SSH_MSG_SERVICE_ACCEPT 	    = 6, 	
-    SSH_MSG_KEXINIT 		    = 20, 	
-    SSH_MSG_NEWKEYS 		    = 21, 	
-    SSH_MSG_USERAUTH_REQUEST 	    = 50, 	
-    SSH_MSG_USERAUTH_FAILURE 	    = 51, 	
-    SSH_MSG_USERAUTH_SUCCESS 	    = 52, 	
-    SSH_MSG_USERAUTH_BANNER 	    = 53, 	
-    SSH_MSG_USERAUTH_INFO_REQUEST     = 60, 	
-    SSH_MSG_USERAUTH_INFO_RESPONSE    = 61,	
-    SSH_MSG_GLOBAL_REQUEST 	    = 80,	
-    SSH_MSG_REQUEST_SUCCESS 	    = 81,	
-    SSH_MSG_REQUEST_FAILURE 	    = 82,	
-    SSH_MSG_CHANNEL_OPEN 		    = 90,	
-    SSH_MSG_CHANNEL_OPEN_CONFIRMATION = 91,		
-    SSH_MSG_CHANNEL_OPEN_FAILURE 	    = 92,	
-    SSH_MSG_CHANNEL_WINDOW_ADJUST     = 93, 	
-    SSH_MSG_CHANNEL_DATA 		    = 94,	
-    SSH_MSG_CHANNEL_EXTENDED_DATA     = 95,	
-    SSH_MSG_CHANNEL_EOF 		    = 96, 	
-    SSH_MSG_CHANNEL_CLOSE 	    = 97, 	
-    SSH_MSG_CHANNEL_REQUEST 	    = 98, 	
-    SSH_MSG_CHANNEL_SUCCESS 	    = 99, 	
-    SSH_MSG_CHANNEL_FAILURE 	    = 100
-}; 	
+    SSH_MSG_DISCONNECT                 = 1,     
+    SSH_MSG_IGNORE             = 2,     
+    SSH_MSG_UNIMPLEMENTED         = 3,     
+    SSH_MSG_DEBUG             = 4,     
+    SSH_MSG_SERVICE_REQUEST         = 5,     
+    SSH_MSG_SERVICE_ACCEPT         = 6,     
+    SSH_MSG_KEXINIT             = 20,     
+    SSH_MSG_NEWKEYS             = 21,     
+    SSH_MSG_USERAUTH_REQUEST         = 50,     
+    SSH_MSG_USERAUTH_FAILURE         = 51,     
+    SSH_MSG_USERAUTH_SUCCESS         = 52,     
+    SSH_MSG_USERAUTH_BANNER         = 53,     
+    SSH_MSG_USERAUTH_INFO_REQUEST     = 60,     
+    SSH_MSG_USERAUTH_INFO_RESPONSE    = 61,    
+    SSH_MSG_GLOBAL_REQUEST         = 80,    
+    SSH_MSG_REQUEST_SUCCESS         = 81,    
+    SSH_MSG_REQUEST_FAILURE         = 82,    
+    SSH_MSG_CHANNEL_OPEN             = 90,    
+    SSH_MSG_CHANNEL_OPEN_CONFIRMATION = 91,        
+    SSH_MSG_CHANNEL_OPEN_FAILURE         = 92,    
+    SSH_MSG_CHANNEL_WINDOW_ADJUST     = 93,     
+    SSH_MSG_CHANNEL_DATA             = 94,    
+    SSH_MSG_CHANNEL_EXTENDED_DATA     = 95,    
+    SSH_MSG_CHANNEL_EOF             = 96,     
+    SSH_MSG_CHANNEL_CLOSE         = 97,     
+    SSH_MSG_CHANNEL_REQUEST         = 98,     
+    SSH_MSG_CHANNEL_SUCCESS         = 99,     
+    SSH_MSG_CHANNEL_FAILURE         = 100
+};     
 
 /*
  * from RFC 4253:
@@ -106,12 +106,12 @@ unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned ch
     uint32_t length;
 
     if (datalen < sizeof(ssh_packet)) {
-	return 0;
+    return 0;
     }
 
     length = ntohl(ssh_packet->packet_length);
     if (length > MAX_SSH_PAYLOAD_LEN) {
-	return 0;   /* indicate parse error */
+    return 0;   /* indicate parse error */
     }
     *total_length = length + 4;
     *msg_code = ssh_packet->payload;
@@ -136,14 +136,14 @@ enum status decode_ssh_vector(const void **dataptr, unsigned int *datalen, struc
     unsigned length;
 
     if (*datalen < 4) {
-	fprintf(stderr, "ERROR: wanted %u, only have %u\n", 4, *datalen);
-	return failure;
+    fprintf(stderr, "ERROR: wanted %u, only have %u\n", 4, *datalen);
+    return failure;
     }
     length = decode_uint32(data);
     *datalen -= 4;
     if (length > *datalen) {
-	fprintf(stderr, "ERROR: wanted %u, only have %u\n", length, *datalen);
-	return failure;
+    fprintf(stderr, "ERROR: wanted %u, only have %u\n", length, *datalen);
+    return failure;
     }
     data += 4;
 
@@ -185,7 +185,7 @@ void ssh_parse_kexinit(struct ssh *ssh, const void *data, unsigned int datalen) 
 
     /* copy the cookie  */
     if (datalen < 16) {
-	return;
+    return;
     }
     memcpy(ssh->cookie, data, 16);
     data += 16;
@@ -193,34 +193,34 @@ void ssh_parse_kexinit(struct ssh *ssh, const void *data, unsigned int datalen) 
 
     /* copy all name-list strings */
     if (decode_ssh_vector(&data, &datalen, ssh->kex_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->s_host_key_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->c_encryption_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->s_encryption_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->c_mac_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->s_mac_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->c_comp_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->s_comp_algos, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->c_languages, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
     if (decode_ssh_vector(&data, &datalen, ssh->s_languages, MAX_SSH_STRING_LEN) == failure) {
-	return;
+    return;
     }
 
     return;
@@ -272,7 +272,7 @@ void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datal
     
     /* copy server public host key and certificates (K_S) */
     if (decode_ssh_vector(&data, &datalen, ssh->s_hostkey, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
     /* copy host key type */
     tmpptr = ssh->s_hostkey->bytes;
@@ -286,7 +286,7 @@ void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datal
     }
     /* copy signature */
     if (decode_ssh_vector(&data, &datalen, ssh->s_signature, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
     /* copy signature type */
     tmpptr = ssh->s_signature->bytes;
@@ -320,12 +320,12 @@ void ssh_parse_kex_dh_gex_group(struct ssh *ssh, const void *data, unsigned int 
     
     /* copy safe prime p */
     if (decode_ssh_vector(&data, &datalen, ssh->s_gex_p, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
 
     /* copy generator g */
     if (decode_ssh_vector(&data, &datalen, ssh->s_gex_g, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
 
     return;
@@ -340,7 +340,7 @@ void ssh_parse_kexrsa_pubkey(struct ssh *ssh, const void *data, unsigned int dat
     
     /* copy server public host key and certificates (K_S) */
     if (decode_ssh_vector(&data, &datalen, ssh->s_hostkey, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
     /* copy host key type */
     tmpptr = ssh->s_hostkey->bytes;
@@ -374,7 +374,7 @@ void ssh_parse_kexrsa_done(struct ssh *ssh, const void *data, unsigned int datal
 
     /* copy signature */
     if (decode_ssh_vector(&data, &datalen, ssh->s_signature, MAX_SSH_PAYLOAD_LEN) == failure) {
-	return;
+    return;
     }
     /* copy signature type */
     tmpptr = ssh->s_signature->bytes;
@@ -546,75 +546,84 @@ inline void ssh_init(struct ssh *ssh) {
 }
 
 void ssh_update(struct ssh *ssh, 
-		const struct pcap_pkthdr *header,
-		const void *data, 
-		unsigned int len, 
-		unsigned int report_ssh) {
+        const struct pcap_pkthdr *header,
+        const void *data, 
+        unsigned int len, 
+        unsigned int report_ssh) {
     unsigned int length;
     unsigned int total_length;
     unsigned char msg_code;
     const void *tmpptr;
 
     if (len == 0) {
-	return;        /* skip zero-length messages */
+    return;        /* skip zero-length messages */
     }
 
     if (report_ssh) {
 
-	if (ssh->role == role_unknown) {
-	    if (ssh->protocol[0] == 0) {   
-		copy_printable_string(ssh->protocol, sizeof(ssh->protocol), data, len);
-		ssh->role = role_client; /* ? */
-	    }
+    if (ssh->role == role_unknown) {
+        if (ssh->protocol[0] == 0) {   
+        /*
+         * RFC 4253:
+         * The server MAY send other lines of data before sending the version
+         * string. Each line SHOULD be terminated by a Carriage Return and Line
+         * Feed.  Such lines MUST NOT begin with "SSH-".
+         */
 
-            /* skip past protocol message */
-            tmpptr = strchr(data, '\n');
-            if (tmpptr == NULL) {
-                return;
-            }
-            len -= (tmpptr - data) + 1;
-            data = tmpptr+1;
-            if (len > MAX_SSH_PAYLOAD_LEN) {
-                return;
-            }
-	}
-        while(1) { /* there may be multiple SSH messages in the packet, so parse them all */
-            length = ssh_packet_parse(data, len, &msg_code, &total_length);
-            if (length == 0 || length > len) {
-                return;
-            }
-            switch (msg_code) {
-            case SSH_MSG_KEXINIT:
-
-                /* robustness check */
-                if ((ssh->c_encryption_algos->len != 0) && (ssh->s_encryption_algos->len != 0)) {
-                    return;
-                }
-
-                ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
-                break;
-            case SSH_MSG_NEWKEYS:
-
-                ssh->newkeys = 1;
-                break;
-            default:
-                /* key exchange specific messages */
-                if (msg_code >= 30 && msg_code <= 49) {
-                    if (ssh->kex_msgs_len < MAX_SSH_KEX_MESSAGES) {
-                        ssh->kex_msgs[ssh->kex_msgs_len].msg_code = msg_code;
-                        vector_set(ssh->kex_msgs[ssh->kex_msgs_len].data, data + sizeof(struct ssh_packet), length);
-                        ssh->kex_msgs_len++;
-                    }
-                }
-            }
-
-            /* skip to the next message in buffer */
-            len -= total_length;
-            if (len > MAX_SSH_PAYLOAD_LEN) {
-                return;
-            }
-            data += total_length;
+        /* skip to version message */
+        if ((tmpptr = strstr(data, "SSH-")) && len >= (tmpptr-data)+4) {
+            len -= (tmpptr-data);
+            copy_printable_string(ssh->protocol, sizeof(ssh->protocol), tmpptr, len);
+        } else {
+            return;
         }
+
+        /* skip past version message */
+        if ((tmpptr = strstr(data, "\n")) && len >= (tmpptr-data)+1) {
+            len -= (tmpptr-data) + 1;
+        } else {
+            return;
+        }
+        ssh->role = role_client; /* ? */
+        }
+    }
+    while(1) { /* there may be multiple SSH messages in the packet, so parse them all */
+        length = ssh_packet_parse(data, len, &msg_code, &total_length);
+        if (length == 0 || length > len) {
+            return;
+        }
+        switch (msg_code) {
+        case SSH_MSG_KEXINIT:
+
+            /* robustness check */
+            if ((ssh->c_encryption_algos->len != 0) && (ssh->s_encryption_algos->len != 0)) {
+                return;
+            }
+
+            ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
+            break;
+        case SSH_MSG_NEWKEYS:
+
+            ssh->newkeys = 1;
+            break;
+        default:
+            /* key exchange specific messages */
+            if (msg_code >= 30 && msg_code <= 49) {
+                if (ssh->kex_msgs_len < MAX_SSH_KEX_MESSAGES) {
+                    ssh->kex_msgs[ssh->kex_msgs_len].msg_code = msg_code;
+                    vector_set(ssh->kex_msgs[ssh->kex_msgs_len].data, data + sizeof(struct ssh_packet), length);
+                    ssh->kex_msgs_len++;
+                }
+            }
+        }
+
+        /* skip to the next message in buffer */
+        len -= total_length;
+        if (len > MAX_SSH_PAYLOAD_LEN) {
+            return;
+        }
+        data += total_length;
+    }
 
     }
 
@@ -750,7 +759,7 @@ void ssh_unit_test() {
 
     output = zattach(stdout, "w");
     if (output == NULL) {
-	fprintf(stderr, "error: could not initialize (possibly compressed) stdout for writing\n");
+    fprintf(stderr, "error: could not initialize (possibly compressed) stdout for writing\n");
     }
     ssh_init(&ssh);
     ssh_update(&ssh, header, msg, 1, 1);

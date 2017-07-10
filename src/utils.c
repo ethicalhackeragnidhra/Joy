@@ -204,6 +204,17 @@ JSON_Value* joy_utils_open_resource_parson(const char *filename) {
     return value;
 }
 
+/*
+ *
+ * \brief Copy a json-printable string from the source buffer to the
+ *        destination buffer.
+ *
+ * \param buf Destination buffer.
+ * \param buflen Maximum length of the destination buffer.
+ * \param data Source buffer.
+ * \param datalen Length of the source buffer.
+ *
+ */
 void copy_printable_string(char *buf, 
 			   unsigned int buflen, 
 			   const void *data,
@@ -211,7 +222,7 @@ void copy_printable_string(char *buf,
     const char *d = data;
 
     while (buflen-- && datalen--) {
-	if (!isprint(*d)) {
+	if (!isprint(*d) || *d == '\"' || *d == '\\' || *d <= 0x1f) { /* json constraints */
 	    break;
 	}
 	*buf++ = *d++;
