@@ -240,6 +240,9 @@ void ssh_get_kex_algo(struct ssh *cli, struct ssh *srv) {
             break;
         }
     }
+    if (algo == NULL) {
+        algo = "";
+    }
     len = strlen(algo);
     cli->kex_algo = malloc(len+1);
     strncpy(cli->kex_algo, algo, len+1); /* strncpy will null-terminate the string */
