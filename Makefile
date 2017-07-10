@@ -73,6 +73,7 @@ str_match_test:
 # testing
 ##
 test: joy joy_test.sh
+	./download_test_pcaps.sh test_pcaps
 	$(BINDIR)/unit_test
 	./joy_test.sh
 
@@ -100,6 +101,12 @@ clean:
 	rm -f "$(DOCDIR)/joy.txt"
 	@cd src; $(MAKE) clean
 	@for a in * .*; do if [ -f "$$a~" ] ; then rm $$a~; fi; done;
+
+##
+# remove everything not under version control
+##
+clobber: clean
+	rm -rf test_pcaps
 
 ##
 # installation via shell script
