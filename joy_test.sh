@@ -51,6 +51,7 @@ for args in "output=tmpfile"                                     \
             "output=tmpfile bidir=1 wht=1"                       \
             "output=tmpfile bidir=1 dns=1"                       \
             "output=tmpfile bidir=1 bpf=tcp"                     \
+            "output=tmpfile bidir=0 ssh=1"                       \
             "output=tmpfile bidir=1 ssh=1"                       \
             "output=tmpfile bidir=1 type=1"; do
     echo -n "testing joy with arguments" $args "... "
