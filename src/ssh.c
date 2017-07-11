@@ -493,7 +493,7 @@ void ssh_process(struct ssh *cli, struct ssh *srv) {
             || strstr(cli->kex_algo, "diffie-hellman-group14-sha1")
             || strstr(cli->kex_algo, "ecdh-sha2-")
             || strstr(cli->kex_algo, "ecmqv-sha2-")
-            || strstr(cli->kex_algo, "curve25519-sha256@libssh.org")) {
+            || strstr(cli->kex_algo, "curve25519-sha256")) {
         ssh_dh_kex(cli, srv);
     } else if (strstr(cli->kex_algo, "gss-group1-sha1-")
             || strstr(cli->kex_algo, "gss-group14-sha1-")) {
