@@ -106,7 +106,7 @@ clean:
 # remove everything not under version control
 ##
 clobber: clean
-	rm -rf test_pcaps/pcapr
+	rm -rf bin/ joy.bin config.vars test_pcaps/pcapr
 
 ##
 # installation via shell script
