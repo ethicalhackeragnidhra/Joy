@@ -9,8 +9,7 @@ BINDIR=bin
 # if you have a set of interesting or varied pcap files, you can set
 # this variable to refer to them, to improve test coverage
 # 
-data=sample.pcap
-
+data=$(find test_pcaps -type f -name "*.pcap")
 
 if [ "$1" != "-f" ]; then
     # avoid clobbering somebody else's files, just in case there is a 
@@ -52,6 +51,7 @@ for args in "output=tmpfile"                                     \
             "output=tmpfile bidir=1 wht=1"                       \
             "output=tmpfile bidir=1 dns=1"                       \
             "output=tmpfile bidir=1 bpf=tcp"                     \
+            "output=tmpfile bidir=1 ssh=1"                       \
             "output=tmpfile bidir=1 type=1"; do
     echo -n "testing joy with arguments" $args "... "
     if ./$BINDIR/joy $args $data; then

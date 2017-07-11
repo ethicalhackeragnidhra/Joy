@@ -73,7 +73,7 @@ str_match_test:
 # testing
 ##
 test: joy joy_test.sh
-	./download_test_pcaps.sh test_pcaps
+	./download_test_pcaps.sh test_pcaps/pcapr
 	$(BINDIR)/unit_test
 	./joy_test.sh
 
@@ -106,7 +106,7 @@ clean:
 # remove everything not under version control
 ##
 clobber: clean
-	rm -rf test_pcaps
+	rm -rf test_pcaps/pcapr
 
 ##
 # installation via shell script
