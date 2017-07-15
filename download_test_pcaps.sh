@@ -50,7 +50,6 @@ ssh_ids="
     4f79a4ff4acafe37ebfecac8ee869080
 "
 
-# Choose protocol 'ssl'
 tls_ids="
     25f6fdee7a2b7f41366c48bc210bd634
     cd32a2522695442278eb2b294b24ccff
