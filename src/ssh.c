@@ -697,12 +697,12 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         ptr = vector_string(srv->c_languages); zprintf(f, ",\"c_languages\":\"%s\"", ptr); free(ptr);
         ptr = vector_string(srv->s_languages); zprintf(f, ",\"s_languages\":\"%s\"", ptr); free(ptr);
         if (srv->s_hostkey->len > 0) {
-        zprintf(f, ",\"s_hostkey_type\":\"%s\"", srv->s_hostkey_type->bytes);
+        ptr = vector_string(srv->s_hostkey_type); zprintf(f, ",\"s_hostkey_type\":\"%s\"", ptr); free(ptr);
         zprintf(f, ",\"s_hostkey\":");
         zprintf_raw_as_hex(f, srv->s_hostkey->bytes, srv->s_hostkey->len);
         }
         if (srv->s_signature->len > 0) {
-        zprintf(f, ",\"s_signature_type\":\"%s\"", srv->s_signature_type->bytes);
+        ptr = vector_string(srv->s_signature_type); zprintf(f, ",\"s_signature_type\":\"%s\"", ptr); free(ptr);
         zprintf(f, ",\"s_signature\":");
         zprintf_raw_as_hex(f, srv->s_signature->bytes, srv->s_signature->len);
         }
