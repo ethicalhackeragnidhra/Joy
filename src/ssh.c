@@ -594,6 +594,10 @@ void ssh_update(struct ssh *ssh,
     
     if (report_ssh) {
 
+    if (ssh->newkeys) {
+        return; /* do not attempt to parse encrypted data */
+    }
+
     /* append application-layer data to buffer */
     vector_append(ssh->buffer, data, len);
     data = ssh->buffer->bytes;
