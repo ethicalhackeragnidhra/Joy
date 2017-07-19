@@ -105,7 +105,7 @@ unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned ch
     const struct ssh_packet *ssh_packet = pkt;
     uint32_t length;
 
-    if (datalen < sizeof(ssh_packet)) {
+    if (datalen < sizeof(struct ssh_packet)) {
     return 0;
     }
 
@@ -182,6 +182,11 @@ enum status decode_ssh_vector(const void **dataptr, unsigned int *datalen, struc
  *
  */
 void ssh_parse_kexinit(struct ssh *ssh, const void *data, unsigned int datalen) {
+
+    /* robustness check */
+    if (ssh->kex_algos->len != 0) {
+        return;
+    }
 
     /* copy the cookie  */
     if (datalen < 16) {
@@ -519,6 +524,7 @@ inline void ssh_init(struct ssh *ssh) {
     ssh->protocol[0] = 0; /* null terminate string */
     memset(ssh->cookie, 0, sizeof(ssh->cookie));
     ssh->kex_algo = NULL;
+    ssh->buffer                 = malloc(sizeof(struct vector)); vector_init(ssh->buffer);
     ssh->kex_algos              = malloc(sizeof(struct vector)); vector_init(ssh->kex_algos);
     ssh->s_host_key_algos       = malloc(sizeof(struct vector)); vector_init(ssh->s_host_key_algos);
     ssh->c_encryption_algos     = malloc(sizeof(struct vector)); vector_init(ssh->c_encryption_algos);
@@ -556,16 +562,20 @@ void ssh_update(struct ssh *ssh,
     unsigned int length;
     unsigned int total_length;
     unsigned char msg_code;
-    const void *tmpptr;
+    void *tmpptr;
 
     if (len == 0) {
     return;        /* skip zero-length messages */
     }
-
+    
     if (report_ssh) {
 
+    /* append application-layer data to buffer */
+    vector_append(ssh->buffer, data, len);
+    data = ssh->buffer->bytes;
+    len = ssh->buffer->len;
+
     if (ssh->role == role_unknown) {
-        if (ssh->protocol[0] == 0) {   
         /*
          * RFC 4253:
          * The server MAY send other lines of data before sending the version
@@ -576,32 +586,31 @@ void ssh_update(struct ssh *ssh,
         /* skip to version message */
         if ((tmpptr = strstr(data, "SSH-")) && len >= (tmpptr-data)+4) {
             len -= (tmpptr-data);
-            copy_printable_string(ssh->protocol, sizeof(ssh->protocol), tmpptr, len);
+            data = tmpptr;
+            copy_printable_string(ssh->protocol, sizeof(ssh->protocol), data, len);
         } else {
             return;
         }
 
         /* skip past version message */
         if ((tmpptr = strstr(data, "\n")) && len >= (tmpptr-data)+1) {
-            len -= (tmpptr-data) + 1;
+            tmpptr += 1; /* skip past the "\n" */
+            len -= (tmpptr-data);
+            data = tmpptr;
         } else {
             return;
         }
         ssh->role = role_client; /* ? */
-        }
     }
-    while(1) { /* there may be multiple SSH messages in the packet, so parse them all */
+
+    while(len > 0) { /* parse all SSH packets in buffer */
         length = ssh_packet_parse(data, len, &msg_code, &total_length);
-        if (length == 0 || length > len) {
-            return;
+        if (length == 0 || total_length > len) {
+            /* unable to parse SSH packet */
+            break;
         }
         switch (msg_code) {
         case SSH_MSG_KEXINIT:
-
-            /* robustness check */
-            if ((ssh->c_encryption_algos->len != 0) && (ssh->s_encryption_algos->len != 0)) {
-                return;
-            }
 
             ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
             break;
@@ -610,6 +619,7 @@ void ssh_update(struct ssh *ssh,
             ssh->newkeys = 1;
             break;
         default:
+
             /* key exchange specific messages */
             if (msg_code >= 30 && msg_code <= 49) {
                 if (ssh->kex_msgs_len < MAX_SSH_KEX_MESSAGES) {
@@ -618,14 +628,19 @@ void ssh_update(struct ssh *ssh,
                     ssh->kex_msgs_len++;
                 }
             }
+            break;
         }
 
         /* skip to the next message in buffer */
         len -= total_length;
-        if (len > MAX_SSH_PAYLOAD_LEN) {
-            return;
-        }
         data += total_length;
+    }
+    
+    /* update or free buffer */
+    if (len > 0) {
+        vector_set(ssh->buffer, data, len);
+    } else {
+        vector_free(ssh->buffer);
     }
 
     }
@@ -731,6 +746,7 @@ void ssh_delete(struct ssh *ssh) {
     if (ssh->kex_algo != NULL) {
         free(ssh->kex_algo);
     }
+    vector_free(ssh->buffer);             free(ssh->buffer);
     vector_free(ssh->kex_algos);          free(ssh->kex_algos);
     vector_free(ssh->s_host_key_algos);   free(ssh->s_host_key_algos);
     vector_free(ssh->c_encryption_algos); free(ssh->c_encryption_algos);

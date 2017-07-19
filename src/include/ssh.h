@@ -69,6 +69,7 @@ typedef struct ssh {
     char protocol[MAX_SSH_STRING_LEN];
     unsigned char cookie[16];
     char *kex_algo;
+    struct vector *buffer;
     struct vector *kex_algos;
     struct vector *s_host_key_algos;
     struct vector *c_encryption_algos;

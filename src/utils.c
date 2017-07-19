@@ -239,17 +239,31 @@ void vector_init(struct vector *vector) {
     return;
 }
 
+/* set vector to data, where data may overlap with current vector contents */
 void vector_set(struct vector *vector, const void *data, unsigned len) {
+    void *tmpptr = NULL;
 
-    if (vector->len != 0 || vector->bytes != NULL) {
+    tmpptr = malloc(len);
+    if (tmpptr == NULL) {
         return;
     }
-    vector->bytes = malloc(len);
+    memcpy(tmpptr, data, len);
+    vector_free(vector); /* does nothing if already empty */
+    vector->bytes = tmpptr;
+    vector->len = len;
+    
+    return;
+}
+
+/* append data to current vector contents (even if vector is empty) */
+void vector_append(struct vector *vector, const void *data, unsigned len) {
+
+    vector->bytes = realloc(vector->bytes, vector->len + len);
     if (vector->bytes == NULL) {
         return;
     }
-    vector->len = len;
-    memcpy(vector->bytes, data, len);
+    memcpy(vector->bytes + vector->len, data, len);
+    vector->len += len;
     
     return;
 }

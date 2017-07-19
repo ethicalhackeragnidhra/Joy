@@ -82,6 +82,7 @@ struct vector {
 void copy_printable_string(char *buf, unsigned buflen, const void *data, unsigned datalen);
 void vector_init(struct vector *vector);
 void vector_set(struct vector *vector, const void *data, unsigned len);
+void vector_append(struct vector *vector, const void *data, unsigned len);
 char *vector_string(struct vector *vector);
 void vector_free(struct vector *vector);
 
