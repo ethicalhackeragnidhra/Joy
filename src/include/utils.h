@@ -76,7 +76,7 @@ enum role {
 
 struct vector {
     unsigned int len;
-    unsigned char *bytes;
+    void *bytes;
 };
 
 void copy_printable_string(char *buf, unsigned buflen, const void *data, unsigned datalen);

@@ -44,7 +44,13 @@
 #include <stdio.h>      /* for fprintf()           */
 #include <stdlib.h>     /* for malloc, realloc, free */
 #include <stdint.h>     /* for uint32_t            */
+
+#ifdef WIN32
+#include "Ws2tcpip.h"
+#else
 #include <arpa/inet.h>  /* for ntohl()             */
+#endif
+
 #include <string.h>     /* for memset()            */
 #include "ssh.h"     
 #include "p2f.h"        /* for zprintf_ ...        */
@@ -95,11 +101,29 @@ enum ssh_msg_type {
  *    byte[m]   mac (Message Authentication Code - MAC); m = mac_length
  *
  */
+#ifdef WIN32
+
+#define PACKED
+#pragma pack(push,1)
+
+struct ssh_packet {
+	uint32_t      packet_length;
+	unsigned char padding_length;
+	unsigned char payload;
+} PACKED;
+
+#pragma pack(pop)
+#undef PACKED
+
+#else
+
 struct ssh_packet { 
     uint32_t      packet_length;
     unsigned char padding_length;
     unsigned char payload;
 } __attribute__((__packed__));    
+
+#endif
 
 unsigned int ssh_packet_parse(const void *pkt, unsigned int datalen, unsigned char *msg_code, unsigned int *total_length) {
     const struct ssh_packet *ssh_packet = pkt;
@@ -131,9 +155,9 @@ unsigned int decode_uint32(const void *data) {
     return ntohl(*x);
 }
 
-enum status decode_ssh_vector(const void **dataptr, unsigned int *datalen, struct vector *vector, unsigned maxlen) {
-    const void *data = *dataptr;
-    unsigned length;
+enum status decode_ssh_vector(const char **dataptr, unsigned int *datalen, struct vector *vector, unsigned maxlen) {
+    const char *data = *dataptr;
+    unsigned int length;
 
     if (*datalen < 4) {
     fprintf(stderr, "ERROR: wanted %u, only have %u\n", 4, *datalen);
@@ -181,7 +205,7 @@ enum status decode_ssh_vector(const void **dataptr, unsigned int *datalen, struc
  *    uint32       0 (reserved for future extension)
  *
  */
-void ssh_parse_kexinit(struct ssh *ssh, const void *data, unsigned int datalen) {
+void ssh_parse_kexinit(struct ssh *ssh, const char *data, unsigned int datalen) {
 
     /* robustness check */
     if (ssh->kex_algos->len != 0) {
@@ -263,7 +287,7 @@ void ssh_get_kex_algo(struct ssh *cli, struct ssh *srv) {
  * from RFC 4253, Section 8
  * decode e 
  */
-void ssh_parse_kexdh_init(struct ssh *ssh, const void *data, unsigned int datalen) {
+void ssh_parse_kexdh_init(struct ssh *ssh, const char *data, unsigned int datalen) {
 
     /* copy client key exchange value */
     if (decode_ssh_vector(&data, &datalen, ssh->c_kex, MAX_SSH_PAYLOAD_LEN) == failure) {
@@ -274,8 +298,8 @@ void ssh_parse_kexdh_init(struct ssh *ssh, const void *data, unsigned int datale
     return;
 }
 
-void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datalen) {
-    const void *tmpptr;
+void ssh_parse_kexdh_reply(struct ssh *ssh, const char *data, unsigned int datalen) {
+    const char *tmpptr;
     unsigned int tmplen;
     
     /* copy server public host key and certificates (K_S) */
@@ -307,7 +331,7 @@ void ssh_parse_kexdh_reply(struct ssh *ssh, const void *data, unsigned int datal
     return;
 }
 
-void ssh_parse_kex_dh_gex_request(struct ssh *ssh, const void *data, unsigned int datalen) {
+void ssh_parse_kex_dh_gex_request(struct ssh *ssh, const char *data, unsigned int datalen) {
 
     if (datalen < 4) {
         return;
@@ -324,7 +348,7 @@ void ssh_parse_kex_dh_gex_request(struct ssh *ssh, const void *data, unsigned in
     return;
 }
 
-void ssh_parse_kex_dh_gex_group(struct ssh *ssh, const void *data, unsigned int datalen) {
+void ssh_parse_kex_dh_gex_group(struct ssh *ssh, const char *data, unsigned int datalen) {
     
     /* copy safe prime p */
     if (decode_ssh_vector(&data, &datalen, ssh->s_gex_p, MAX_SSH_PAYLOAD_LEN) == failure) {
@@ -342,8 +366,8 @@ void ssh_parse_kex_dh_gex_group(struct ssh *ssh, const void *data, unsigned int 
 /*
  * from RFC 4432, Section 4
  */
-void ssh_parse_kexrsa_pubkey(struct ssh *ssh, const void *data, unsigned int datalen) {
-    const void *tmpptr;
+void ssh_parse_kexrsa_pubkey(struct ssh *ssh, const char *data, unsigned int datalen) {
+    const char *tmpptr;
     unsigned int tmplen;
     
     /* copy server public host key and certificates (K_S) */
@@ -365,7 +389,7 @@ void ssh_parse_kexrsa_pubkey(struct ssh *ssh, const void *data, unsigned int dat
     return;
 }
 
-void ssh_parse_kexrsa_secret(struct ssh *ssh, const void *data, unsigned int datalen) {
+void ssh_parse_kexrsa_secret(struct ssh *ssh, const char *data, unsigned int datalen) {
 
     /* copy RSA-encrypted secret */
     if (decode_ssh_vector(&data, &datalen, ssh->c_kex, MAX_SSH_PAYLOAD_LEN) == failure) {
@@ -376,8 +400,8 @@ void ssh_parse_kexrsa_secret(struct ssh *ssh, const void *data, unsigned int dat
     return;
 }
 
-void ssh_parse_kexrsa_done(struct ssh *ssh, const void *data, unsigned int datalen) {
-    const void *tmpptr;
+void ssh_parse_kexrsa_done(struct ssh *ssh, const char *data, unsigned int datalen) {
+    const char *tmpptr;
     unsigned int tmplen;
 
     /* copy signature */
@@ -612,7 +636,7 @@ void ssh_update(struct ssh *ssh,
         switch (msg_code) {
         case SSH_MSG_KEXINIT:
 
-            ssh_parse_kexinit(ssh, data + sizeof(struct ssh_packet), length);
+            ssh_parse_kexinit(ssh, (const char*)data + sizeof(struct ssh_packet), length);
             break;
         case SSH_MSG_NEWKEYS:
 
