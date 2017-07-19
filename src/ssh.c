@@ -655,11 +655,10 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         return;
     }
     if (x1->role == role_client) {
-        cli = x1;
-        if (x2 != NULL) {
-            srv = x2;
-        }
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+        cli = x1, srv = x2;
     } else { // x1->role == role_server
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
         srv = x1;
     }
     ssh_process(cli, srv);
