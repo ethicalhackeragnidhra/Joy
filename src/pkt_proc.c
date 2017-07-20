@@ -617,6 +617,8 @@ process_tcp (const struct pcap_pkthdr *header, const char *tcp_start, int tcp_le
         if (ntohl(tcp->tcp_seq) < record->seq) {
             // fprintf(info, "retransmission detected\n");
             record->retrans++;
+            // do not process TCP retransmissions
+            return NULL;
         } 
     }
     if (include_zeroes || size_payload > 0) {

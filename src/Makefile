@@ -49,7 +49,7 @@ endif
 # compiler directives
 ##
 CDEFS     = -D$(SYS_NAME)=1 -DVERSION=\"$(JOY_VERSION)\"
-CFLAGS = -Wall -Wno-deprecated-declarations -Wno-unused-function -g -O3  # -pg # -g # -fstack-protector-all 
+CFLAGS = -Wall -Wno-deprecated-declarations -g -O3  # -pg # -g # -fstack-protector-all 
 
 ##
 # variables to make source file handling easier
