@@ -610,6 +610,7 @@ inline void ssh_init(struct ssh *ssh) {
     ssh->c_gex_n = 0;
     ssh->c_gex_max = 0;
     ssh->newkeys = 0;
+    ssh->unencrypted = 0;
 }
 
 void ssh_update(struct ssh *ssh, 
@@ -630,6 +631,8 @@ void ssh_update(struct ssh *ssh,
 
     if (ssh->newkeys) {
         return; /* do not attempt to parse encrypted data */
+    } else {
+        ssh->unencrypted++;
     }
 
     /* append application-layer data to buffer */
@@ -750,6 +753,7 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         zprintf_raw_as_hex(f, cli->c_kex->bytes, cli->c_kex->len);
         }
         zprintf(f, ",\"newkeys\":\"%s\"", cli->newkeys? "true": "false");
+        zprintf(f, ",\"unencrypted\":%d", cli->unencrypted);
         zprintf(f, "}");
     }
     if (srv != NULL) {
@@ -796,6 +800,7 @@ void ssh_print_json(const struct ssh *x1, const struct ssh *x2, zfile f) {
         zprintf_raw_as_hex(f, srv->s_gex_g->bytes, srv->s_gex_g->len);
         }
         zprintf(f, ",\"newkeys\":\"%s\"", srv->newkeys? "true": "false");
+        zprintf(f, ",\"unencrypted\":%d", srv->unencrypted);
         zprintf(f, "}");
     }
     zprintf(f, "}");

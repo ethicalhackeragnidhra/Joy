@@ -92,6 +92,7 @@ typedef struct ssh {
     struct ssh_msg kex_msgs[MAX_SSH_KEX_MESSAGES];
     unsigned int c_gex_min,c_gex_n,c_gex_max;
     int newkeys;
+    int unencrypted;
 } ssh_t;
 
 declare_feature(ssh);
